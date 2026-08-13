@@ -113,11 +113,15 @@ def documents():
 
 @app.route("/activity")
 def activity():
-    """Deletions + uncertain items -- the audit trail."""
+    """Quarantined (bad, held for review) + deletions (duplicates, no copy
+    kept) + uncertain items -- the audit trail."""
     records = load_latest_records(backup_dir())
+    quarantined = filter_by_kind(records, "quarantine")
     deletions = filter_by_kind(records, "deletion")
     uncertain = filter_by_kind(records, "uncertain")
-    return render_template("activity.html", deletions=deletions, uncertain=uncertain)
+    return render_template(
+        "activity.html", quarantined=quarantined, deletions=deletions, uncertain=uncertain
+    )
 
 
 @app.route("/media/photos/<path:filename>")
@@ -130,6 +134,13 @@ def media_photo(filename):
 @app.route("/media/documents/<path:filename>")
 def media_document(filename):
     folder = backup_dir() / "documents"
+    _safe_media_path(folder, filename)
+    return send_from_directory(folder, filename)
+
+
+@app.route("/media/quarantine/<path:filename>")
+def media_quarantine(filename):
+    folder = backup_dir() / "quarantine"
     _safe_media_path(folder, filename)
     return send_from_directory(folder, filename)
 

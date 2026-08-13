@@ -19,7 +19,7 @@ from pathlib import Path
 @dataclass
 class ResultRecord:
     filename: str
-    kind: str  # "photo" | "document" | "deletion" | "uncertain"
+    kind: str  # "photo" | "document" | "quarantine" | "deletion" | "uncertain"
     stored_at: str
     metadata: dict
 
@@ -56,7 +56,7 @@ def load_latest_records(local_backup_dir: str | Path) -> dict[str, ResultRecord]
 
 
 def summarize(records: dict[str, ResultRecord]) -> dict:
-    counts = {"photo": 0, "document": 0, "deletion": 0, "uncertain": 0}
+    counts = {"photo": 0, "document": 0, "quarantine": 0, "deletion": 0, "uncertain": 0}
     last_run = None
     for r in records.values():
         counts[r.kind] = counts.get(r.kind, 0) + 1

@@ -28,9 +28,14 @@
 <div class="stat-grid">
   <div class="stat-card good"><div class="stat-number">{{ summary.counts.photo }}</div><div>Photos kept</div></div>
   <div class="stat-card doc"><div class="stat-number">{{ summary.counts.document }}</div><div>Documents found</div></div>
-  <div class="stat-card bad"><div class="stat-number">{{ summary.counts.deletion }}</div><div>Removed</div></div>
+  <div class="stat-card warn"><div class="stat-number">{{ summary.counts.quarantine }}</div><div>Quarantined</div></div>
+  <div class="stat-card bad"><div class="stat-number">{{ summary.counts.deletion }}</div><div>Removed (duplicates)</div></div>
   <div class="stat-card warn"><div class="stat-number">{{ summary.counts.uncertain }}</div><div>Uncertain</div></div>
 </div>
+
+{% if summary.counts.quarantine %}
+<p><a href="/activity">See quarantined photos &rarr;</a></p>
+{% endif %}
 
 {% if recent_photos %}
 <h2>Recent photos</h2>

@@ -60,7 +60,7 @@ def _index_records(backup_store):
     return [json.loads(line) for line in lines]
 
 
-def test_confident_bad_photo_is_deleted(make_noise_image, tmp_path):
+def test_confident_bad_photo_is_quarantined(make_noise_image, tmp_path):
     photo = Path(make_noise_image(seed=0, name="bad.png"))
     agent = StubAgent(AgentResult("bad", confidence=0.9, quality_score=0.1,
                                    extracted_text=None, category=None, reasoning="too blurry"))
@@ -68,10 +68,14 @@ def test_confident_bad_photo_is_deleted(make_noise_image, tmp_path):
 
     result = pipe.process_photo(photo)
 
-    assert result.action == "deleted_bad"
-    assert not photo.exists()
+    assert result.action == "quarantined"
+    assert not photo.exists()  # removed from the "SD card" ...
+    quarantined_copy = tmp_path / "local_backup" / "quarantine" / "bad.png"
+    assert quarantined_copy.exists()  # ... but safely copied here first, not lost
     records = _index_records(store)
-    assert records[-1]["kind"] == "deletion"
+    assert records[-1]["kind"] == "quarantine"
+    assert records[-1]["metadata"]["reason"] == "too blurry"
+    assert records[-1]["metadata"]["batch_id"] == pipe.batch_id
 
 
 def test_low_confidence_bad_photo_is_kept_uncertain(make_noise_image, tmp_path):
@@ -134,6 +138,25 @@ def test_duplicate_is_deleted_without_calling_agent(make_noise_image, tmp_path):
     assert result2.action == "deleted_duplicate"
     assert not second.exists()
     assert agent.calls == 1  # agent never ran on the duplicate
+
+
+def test_agent_duplicate_classification_still_auto_deletes(make_noise_image, tmp_path):
+    """The agent is instructed never to return "duplicate" (real dedup
+    happens earlier via perceptual hashing), but if it ever did, this is a
+    defensive fallback -- duplicates keep auto-deleting immediately per the
+    team's decision, unlike "bad" which now goes to quarantine instead."""
+    photo = Path(make_noise_image(seed=0, name="weird_duplicate.png"))
+    agent = StubAgent(AgentResult("duplicate", confidence=0.9, quality_score=0.5,
+                                   extracted_text=None, category=None, reasoning="agent thinks duplicate"))
+    pipe, store = _build_pipeline(agent, tmp_path)
+
+    result = pipe.process_photo(photo)
+
+    assert result.action == "deleted_duplicate"
+    assert not photo.exists()
+    assert not (tmp_path / "local_backup" / "quarantine" / "weird_duplicate.png").exists()
+    records = _index_records(store)
+    assert records[-1]["kind"] == "deletion"
 
 
 def _build_pipeline_with_stop_file(agent, tmp_path, stop_file):

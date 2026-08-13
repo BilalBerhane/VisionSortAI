@@ -46,6 +46,11 @@ def build_pipeline(args) -> Pipeline:
         backup_store = AzureBackupStore(
             connection_string=CONFIG.azure_storage_connection_string,
             container=CONFIG.azure_storage_container,
+            quarantine_container=CONFIG.azure_quarantine_container,
+            cosmos_endpoint=CONFIG.azure_cosmos_endpoint,
+            cosmos_key=CONFIG.azure_cosmos_key,
+            cosmos_database=CONFIG.azure_cosmos_database,
+            cosmos_container=CONFIG.azure_cosmos_container,
         )
 
     return Pipeline(

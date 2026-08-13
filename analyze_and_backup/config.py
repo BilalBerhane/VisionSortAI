@@ -55,6 +55,16 @@ class Config:
     # --- Azure Storage ---
     azure_storage_connection_string: str | None = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     azure_storage_container: str = os.getenv("AZURE_STORAGE_CONTAINER", "analyze-and-backup")
+    azure_quarantine_container: str = os.getenv("AZURE_QUARANTINE_CONTAINER", "quarantine")
+
+    # --- Azure Cosmos DB (shared searchable index -- same database/container
+    # the teammate's api/ dashboard code (photos.py, batches.py,
+    # quarantine.py, audit.py) reads from. Optional: if endpoint/key aren't
+    # set, AzureBackupStore falls back to a local JSON-lines log instead. ---
+    azure_cosmos_endpoint: str | None = os.getenv("AZURE_COSMOS_ENDPOINT")
+    azure_cosmos_key: str | None = os.getenv("AZURE_COSMOS_KEY")
+    azure_cosmos_database: str = os.getenv("AZURE_COSMOS_DATABASE", "visionsortai")
+    azure_cosmos_container: str = os.getenv("AZURE_COSMOS_CONTAINER", "photos")
 
     # --- Misc ---
     sd_card_mount_path: str = os.getenv("SD_CARD_MOUNT_PATH", "/media/pi/SD_CARD")

@@ -16,6 +16,7 @@ uncertain instead of acting on it.
 from __future__ import annotations
 
 import os
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,7 +31,7 @@ from .quality import (
 )
 from .storage import BackupRecord, BackupStore
 
-Action = str  # "deleted_duplicate" | "deleted_bad" | "kept_uncertain" | "stored_document" | "stored_photo"
+Action = str  # "deleted_duplicate" | "quarantined" | "kept_uncertain" | "stored_document" | "stored_photo"
 
 
 @dataclass
@@ -63,6 +64,11 @@ class Pipeline:
         # half-deleted. The web interface's "Stop" button just creates this
         # file -- no elevated privileges needed to control a systemd job.
         self.stop_file = Path(stop_file) if stop_file else None
+        # One id per Pipeline instance -- in practice one per SD-card/USB
+        # insert, since cli.py builds a fresh Pipeline per systemd run. Used
+        # as the Cosmos DB partition key so the teammate's api/batches.py
+        # can group every record from a single card-processing run.
+        self.batch_id = str(uuid.uuid4())
 
     def stop_requested(self) -> bool:
         return self.stop_file is not None and self.stop_file.exists()
@@ -92,8 +98,9 @@ class Pipeline:
         existing = self.dedup_index.find_duplicate(phash)
         if existing is not None:
             resolution = resolve_duplicate(existing, path, blur)
+            dedup_meta = {"batch_id": self.batch_id, "file_sha256": metadata.file_sha256}
             if resolution.delete_path == str(path):
-                self.backup_store.log_deletion(path, reason="duplicate of an existing sharper photo")
+                self.backup_store.log_deletion(path, reason="duplicate of an existing sharper photo", metadata=dedup_meta)
                 self._delete_file(path)
                 return PipelineResult(str(path), "deleted_duplicate", f"duplicate of {existing.path}")
             else:
@@ -101,7 +108,7 @@ class Pipeline:
                 # and the previously-kept file is deleted instead.
                 old_path = Path(existing.path)
                 self.dedup_index.replace(existing, path, phash, blur)
-                self.backup_store.log_deletion(old_path, reason="duplicate, superseded by a sharper photo")
+                self.backup_store.log_deletion(old_path, reason="duplicate, superseded by a sharper photo", metadata=dedup_meta)
                 self._delete_file(old_path)
                 # fall through: the new (sharper) photo continues through quality/agent checks below
         else:
@@ -128,6 +135,7 @@ class Pipeline:
         # Step 5: routing
         floor = self.config.agent_confidence_floor
         meta_dict = {
+            "batch_id": self.batch_id,
             "timestamp": metadata.timestamp,
             "camera_model": metadata.camera_model,
             "gps_latitude": metadata.gps_latitude,
@@ -139,12 +147,31 @@ class Pipeline:
 
         if result.classification in ("duplicate", "bad"):
             if result.confidence >= floor:
-                self.backup_store.log_deletion(path, reason=result.reasoning)
-                self._delete_file(path)
-                return PipelineResult(str(path), "deleted_bad", result.reasoning, result)
+                if result.classification == "bad":
+                    # Held for review instead of deleted outright -- copied
+                    # to quarantine storage (local folder / Azure blob
+                    # "quarantine" container) so it's actually visible
+                    # (locally in the web interface, and in the teammate's
+                    # Cosmos-backed quarantine dashboard) rather than just a
+                    # text log entry. Only removed from the SD card after
+                    # it's safely quarantined elsewhere.
+                    record = self.backup_store.quarantine_photo(path, reason=result.reasoning, metadata=meta_dict)
+                    self._delete_file(path)
+                    return PipelineResult(str(path), "quarantined", result.reasoning, result, record)
+                else:
+                    # "duplicate" classification from the agent is a
+                    # defensive fallback -- real duplicate detection happens
+                    # earlier via perceptual hashing (see the dedup
+                    # fast-path above), which is what actually runs in
+                    # practice. Duplicates keep auto-deleting immediately
+                    # (team decision) since the sharper copy is always kept.
+                    self.backup_store.log_deletion(path, reason=result.reasoning, metadata=meta_dict)
+                    self._delete_file(path)
+                    return PipelineResult(str(path), "deleted_duplicate", result.reasoning, result)
             else:
                 record = self.backup_store.log_uncertain(
-                    path, reason=f"low confidence ({result.confidence:.2f}) for '{result.classification}'"
+                    path, reason=f"low confidence ({result.confidence:.2f}) for '{result.classification}'",
+                    metadata=meta_dict,
                 )
                 return PipelineResult(str(path), "kept_uncertain", record.metadata["reason"], result, record)
 

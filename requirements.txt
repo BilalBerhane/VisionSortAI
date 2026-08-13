@@ -9,6 +9,7 @@ python-dotenv>=1.0
 # --- Cloud (AI agent + backup) ---
 openai>=1.0            # Azure OpenAI client (AzureOpenAI class)
 azure-storage-blob>=12.19
+azure-cosmos>=4.5      # searchable index, shared schema with the teammate's api/ dashboard code
 
 # --- Web interface ---
 Flask>=3.0

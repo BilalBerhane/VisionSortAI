@@ -3,6 +3,21 @@
 {% block content %}
 <h1>Activity log</h1>
 
+<h2>Quarantined ({{ quarantined|length }})</h2>
+<p class="muted">Flagged bad (blurry/dark/etc.) and held for review -- not deleted, safely copied here first.</p>
+<div class="doc-list">
+  {% for q in quarantined %}
+    <div class="doc-card">
+      <img src="{{ url_for('media_quarantine', filename=q.filename) }}" loading="lazy" alt="{{ q.filename }}">
+      <div>
+        <strong>{{ q.filename }}</strong>
+        <p>{{ q.metadata.reason }}</p>
+      </div>
+    </div>
+  {% endfor %}
+  {% if not quarantined %}<p class="muted">None.</p>{% endif %}
+</div>
+
 <h2>Uncertain ({{ uncertain|length }})</h2>
 <p class="muted">Low-confidence items the agent didn't act on -- kept, not deleted.</p>
 <ul class="log-list">
@@ -13,6 +28,7 @@
 </ul>
 
 <h2>Removed ({{ deletions|length }})</h2>
+<p class="muted">Duplicates -- deleted immediately, no copy kept (a sharper copy was always retained instead).</p>
 <ul class="log-list">
   {% for d in deletions %}
     <li><strong>{{ d.filename }}</strong> -- {{ d.metadata.reason }}</li>

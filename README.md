@@ -25,21 +25,31 @@ See `agent_workflow_diagram.svg`/`.png` for the visual version of this flow.
    offline rule-based stand-in (`MockVisionAgent`) classifies the photo as
    `bad`, `document`, or `photo`, with a confidence score and (for documents)
    OCR'd text + a category label.
-6. **Routing + confidence floor** (`pipeline.py`) — there's no human review
-   step (team decision), so `AGENT_CONFIDENCE_FLOOR` (default 0.75) is the
-   safety net: the agent only auto-deletes when confident. Anything below the
-   floor is kept and logged as "uncertain" instead.
-7. **Backup** (`storage.py`) — approved photos and document records go to
-   Azure Blob Storage, with a clearly marked integration point for the
-   Cosmos DB write your teammate owns (falls back to a local JSON-lines log
-   until that's wired up).
+6. **Routing + confidence floor** (`pipeline.py`) — `AGENT_CONFIDENCE_FLOOR`
+   (default 0.75) is the safety net: the agent only auto-acts when
+   confident. Anything below the floor is kept and logged as "uncertain"
+   instead. Photos classified `bad` (blurry/dark/etc.) are **quarantined**,
+   not deleted outright — copied to quarantine storage (local
+   `local_backup/quarantine/` or the Azure `quarantine` blob container) and
+   removed from the source only once safely copied elsewhere, so they're
+   still visible for review. True duplicates (resolved locally via
+   perceptual hash, before the agent ever runs) still auto-delete
+   immediately, since a sharper copy is always kept — nothing unique is
+   ever lost there.
+7. **Backup** (`storage.py`) — approved photos, documents, and quarantined
+   photos all go to Azure Blob Storage (separate `photos`/`documents`/
+   `quarantine` containers), indexed in Cosmos DB using the same
+   database/container the teammate's `api/` dashboard code already queries
+   (`id`/`filename`/`batch_id`/`status`/`type` fields — falls back to a
+   local JSON-lines log if Cosmos credentials aren't configured).
 8. **Web interface** (`webapp.py`) — a local Flask app that reads straight
    from `local_backup/` and shows what happened: a photo gallery, a
-   document search (by keyword or date), and an activity log of what got
-   deleted or flagged uncertain. A printed QR code (`generate_qr.py`) points
-   at this page so someone who just inserted a card can scan it on their
-   phone and see the results without touching the Pi. See `deploy/README.md`
-   for wiring this up to run automatically on card insert.
+   document search (by keyword or date), and an activity log showing
+   quarantined photos (with thumbnails), duplicates removed, and anything
+   flagged uncertain. A printed QR code (`generate_qr.py`) points at this
+   page so someone who just inserted a card can scan it on their phone and
+   see the results without touching the Pi. See `deploy/README.md` for
+   wiring this up to run automatically on card insert.
 
 ## Setup
 
@@ -90,8 +100,11 @@ sensor behaves differently than assumed.
 
 ## Known simplification worth flagging in your writeup
 
-The proposal frames the agent under a **Recommend-Approve-Act** pattern. This
-implementation skips the "Approve" step for deletions — the agent
-recommends *and* acts, with the confidence floor as the only guardrail. Worth
-addressing head-on in your individual documentation rather than leaving it as
-an unexplained gap between the proposal and the build.
+The proposal frames the agent under a **Recommend-Approve-Act** pattern.
+This implementation now honors that pattern for `bad` classifications —
+they're quarantined (recommend) rather than deleted, and only actually
+removed once approved via the teammate's `api/quarantine.py` endpoints (act)
+— but **not** for duplicates: those still auto-delete immediately with no
+approve step, since only the sharper copy is ever discarded and nothing
+unique is at risk. Worth stating that distinction explicitly in your
+individual documentation rather than leaving it implicit.
