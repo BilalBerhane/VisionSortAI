@@ -1,5 +1,7 @@
 # Secrets
-.env.example
+.env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
