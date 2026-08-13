@@ -1,0 +1,33 @@
+# Templated service -- one instance per inserted partition, e.g.
+# analyze-and-backup@sda1.service. Started automatically by the udev rule
+# (99-analyze-and-backup.rules), not meant to be started manually.
+#
+# %I in a systemd template unit = the instance name (the partition, e.g. sda1)
+#
+# NOTE: runs with --mock-agent --local-backup for now (no Azure credentials
+# configured yet). Once .env has real AZURE_OPENAI_* / AZURE_STORAGE_* values,
+# delete "--mock-agent --local-backup" from the ExecStart line below so it
+# uses the real vision agent and uploads to Blob Storage instead.
+
+[Unit]
+Description=Analyze and Backup - process inserted card/drive %I
+After=local-fs.target
+
+[Service]
+Type=oneshot
+# The "+" prefix runs that specific line with full (root) privileges even
+# though the unit's User= below is unprivileged -- mkdir under /mnt and
+# mount both need root, but the actual pipeline script (ExecStart) doesn't
+# and shouldn't run as root.
+ExecStartPre=+/bin/mkdir -p /mnt/analyze-and-backup/%I
+ExecStartPre=+-/bin/mount /dev/%I /mnt/analyze-and-backup/%I
+# PYTHONUNBUFFERED=1: without this, cli.py's print() output sits in a buffer
+# and doesn't reach journalctl until the process exits (Python buffers
+# stdout by block when it isn't attached to a terminal, which is always the
+# case under systemd) -- this makes `journalctl -u ... -f` show progress
+# live, per photo, instead of all at once at the end.
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__PROJECT_DIR__/.venv/bin/python3 __PROJECT_DIR__/cli.py --mount-path /mnt/analyze-and-backup/%I --mock-agent --local-backup
+ExecStopPost=+-/bin/umount /mnt/analyze-and-backup/%I
+User=__PROJECT_USER__
+WorkingDirectory=__PROJECT_DIR__

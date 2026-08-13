@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Activity{% endblock %}
+{% block content %}
+<h1>Activity log</h1>
+
+<h2>Uncertain ({{ uncertain|length }})</h2>
+<p class="muted">Low-confidence items the agent didn't act on -- kept, not deleted.</p>
+<ul class="log-list">
+  {% for u in uncertain %}
+    <li><strong>{{ u.filename }}</strong> -- {{ u.metadata.reason }}</li>
+  {% endfor %}
+  {% if not uncertain %}<li class="muted">None.</li>{% endif %}
+</ul>
+
+<h2>Removed ({{ deletions|length }})</h2>
+<ul class="log-list">
+  {% for d in deletions %}
+    <li><strong>{{ d.filename }}</strong> -- {{ d.metadata.reason }}</li>
+  {% endfor %}
+  {% if not deletions %}<li class="muted">None.</li>{% endif %}
+</ul>
+{% endblock %}

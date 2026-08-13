@@ -1,0 +1,25 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Real personal photos and generated review/backup artifacts -- these
+# should never end up in a public/shared git repo
+local_backup/
+sample_photos/
+blur_review/
+quality_review/
+azure_index_fallback.jsonl
+
+# Generated, not source
+qr_sign.png
+
+# Azurite (local Azure Storage emulator) state
+__azurite_db_*__.json
+__queuestorage__/
+__blobstorage__/
+__tablestorage__/

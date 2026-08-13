@@ -1,0 +1,18 @@
+
+# --- Edge / local processing ---
+Pillow>=10.0
+numpy>=1.24
+scipy>=1.11          # scipy.ndimage.laplace for blur scoring
+ImageHash>=4.3        # perceptual hashing for duplicate detection
+python-dotenv>=1.0
+
+# --- Cloud (AI agent + backup) ---
+openai>=1.0            # Azure OpenAI client (AzureOpenAI class)
+azure-storage-blob>=12.19
+
+# --- Web interface ---
+Flask>=3.0
+qrcode[pil]>=7.4        # printable QR code generation
+
+# --- Testing ---
+pytest>=8.0

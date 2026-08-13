@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Photos{% endblock %}
+{% block content %}
+<h1>Photos ({{ photos|length }})</h1>
+<div class="gallery">
+  {% for p in photos %}
+    <a href="{{ url_for('media_photo', filename=p.filename) }}" target="_blank">
+      <img src="{{ url_for('media_photo', filename=p.filename) }}" loading="lazy" alt="{{ p.filename }}">
+    </a>
+  {% endfor %}
+</div>
+{% if not photos %}<p class="muted">No approved photos yet.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Latest results</h1>
+{% if summary.last_run %}
+  <p class="muted">Last run: {{ summary.last_run }}</p>
+{% else %}
+  <p class="muted">No pipeline runs yet. Insert an SD card or USB drive to get started.</p>
+{% endif %}
+
+{% if run_active %}
+<div class="run-banner {{ 'stopping' if stop_requested else '' }}">
+  <div>
+    {% if stop_requested %}
+      <strong>Stopping&hellip;</strong> finishing the current photo, then it will halt.
+    {% else %}
+      <strong>A card is currently being processed.</strong> This page will keep updating as it runs.
+    {% endif %}
+  </div>
+  {% if not stop_requested %}
+  <form action="{{ url_for('control_stop') }}" method="post" onsubmit="return confirm('Stop the current run? Photos already processed stay backed up -- only photos not yet reached will be skipped.');">
+    <button type="submit" class="stop-btn">Stop</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="stat-grid">
+  <div class="stat-card good"><div class="stat-number">{{ summary.counts.photo }}</div><div>Photos kept</div></div>
+  <div class="stat-card doc"><div class="stat-number">{{ summary.counts.document }}</div><div>Documents found</div></div>
+  <div class="stat-card bad"><div class="stat-number">{{ summary.counts.deletion }}</div><div>Removed</div></div>
+  <div class="stat-card warn"><div class="stat-number">{{ summary.counts.uncertain }}</div><div>Uncertain</div></div>
+</div>
+
+{% if recent_photos %}
+<h2>Recent photos</h2>
+<div class="gallery">
+  {% for p in recent_photos %}
+    <a href="{{ url_for('media_photo', filename=p.filename) }}" target="_blank">
+      <img src="{{ url_for('media_photo', filename=p.filename) }}" loading="lazy" alt="{{ p.filename }}">
+    </a>
+  {% endfor %}
+</div>
+<p><a href="/photos">See all photos &rarr;</a></p>
+{% endif %}
+
+{% if recent_documents %}
+<h2>Recent documents</h2>
+<div class="doc-list">
+  {% for d in recent_documents %}
+    <div class="doc-card">
+      <img src="{{ url_for('media_document', filename=d.filename) }}" loading="lazy" alt="{{ d.filename }}">
+      <div>
+        <strong>{{ d.metadata.category or "document" }}</strong>
+        <p>{{ (d.metadata.extracted_text or "")[:120] }}{% if (d.metadata.extracted_text or "")|length > 120 %}...{% endif %}</p>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+<p><a href="/documents">Search all documents &rarr;</a></p>
+{% endif %}
+{% endblock %}

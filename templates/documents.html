@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+<h1>Documents ({{ documents|length }})</h1>
+<form method="get" class="search-form">
+  <input type="text" name="q" placeholder="Search text or category..." value="{{ query }}">
+  <label class="date-label">From <input type="date" name="date_from" value="{{ date_from }}"></label>
+  <label class="date-label">To <input type="date" name="date_to" value="{{ date_to }}"></label>
+  <button type="submit">Search</button>
+</form>
+<div class="doc-list">
+  {% for d in documents %}
+    <div class="doc-card">
+      <img src="{{ url_for('media_document', filename=d.filename) }}" loading="lazy" alt="{{ d.filename }}">
+      <div>
+        <strong>{{ d.metadata.category or "document" }}</strong>
+        <span class="muted">{{ d.metadata.timestamp or d.stored_at }}</span>
+        <p>{{ d.metadata.extracted_text or "(no text extracted)" }}</p>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% if not documents %}<p class="muted">No documents match.</p>{% endif %}
+{% endblock %}

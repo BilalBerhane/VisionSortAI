@@ -1,0 +1,16 @@
+# The always-on web interface. Starts on boot, restarts if it crashes.
+
+[Unit]
+Description=Analyze and Backup web interface
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=__PROJECT_DIR__
+ExecStart=__PROJECT_DIR__/.venv/bin/python3 __PROJECT_DIR__/webapp.py
+Restart=on-failure
+RestartSec=3
+User=__PROJECT_USER__
+
+[Install]
+WantedBy=multi-user.target

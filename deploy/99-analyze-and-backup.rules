@@ -1,0 +1,12 @@
+# Fires when a new partition with a filesystem shows up on any USB-attached
+# block device -- covers both a USB flash drive AND an SD card inserted via
+# a USB card reader (both appear as /dev/sdX on the Pi; the Pi's own boot
+# SD card is /dev/mmcblk0 and is NOT matched by this rule).
+#
+# Install: sudo cp 99-analyze-and-backup.rules /etc/udev/rules.d/
+#          sudo udevadm control --reload
+#
+# Starts the templated analyze-and-backup@.service below, passing the
+# partition's kernel name (e.g. "sda1") as the instance name.
+
+SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]", ACTION=="add", ENV{ID_FS_TYPE}!="", TAG+="systemd", ENV{SYSTEMD_WANTS}+="analyze-and-backup@%k.service"
